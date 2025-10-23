@@ -161,16 +161,16 @@ IEnumerator BossDestroy()
 それぞれの担当箇所をGitHubを活用してマージし、当日デバッグに回れるメンバーでデバッグプレイしてプロトタイプへの評価を行いました。  
 この評価に関してチームミーティングを行い、改善点と改善方法を定め残りの2日間で調整を行うことでブラッシュアップできました。  
   
-![デバッグ評価](readme_img/team_review_d.png)  
+![デバッグ評価](readme_img/team_review_a.png)  
   
 ## GitHub上でのマージ作業を意識して担当範囲に最新の注意
 スピードが要求される制作期間において、マージ作業で大きなトラブルを生まないようチームの取り決めを忠実に順守しました。  
 GitHubのIssuesを通じて進捗や問題点については随時チームへの報告や問題提起を行っています。
-![issuesにおける情報共有](readme_img/team_issues_d.png)  
+![issuesにおける情報共有](readme_img/team_issues_a.png)  
   
 SourceTreeでブランチを分けてコンクリフト衝突がおこらないよう細心の注意を払いました。  
 また定期的なコミットを通してバックアップも万全にしました。  
-![SourceTreeの様子](readme_img/team_sourcetree_d.png)  
+![SourceTreeの様子](readme_img/team_sourcetree_a.png)  
   
 ## 共同開発に関する工夫
 ### 仕様から反れていないかの確認作業
