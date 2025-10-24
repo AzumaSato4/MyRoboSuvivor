@@ -22,7 +22,7 @@ RovoSurvivorは4名チームで共同製作したUnityゲームです。
 * そのほかの使用ツール：GitHub、SorceTree、VisualStudio、Googleドライブ(スプレッドシート)で情報共有
 
 ## サンプルゲーム
-ぜひゲームを体験してみてください！  
+ゲームの容量が大きいためプレイできる環境を構築中  
 [RoboSurvivorサンプル](http://)
 
 ## ゲームフロー
@@ -61,101 +61,119 @@ BOSSのライフを0にすることができたらボス撃破！エンディン
 ![UI説明](readme_img/robo_readme_7.png)  
   
 ## 共同製作における主な担当パート
-共同製作では主にボスの制御を担当しました。  
-ボスオブジェクトに対してBossController.csスクリプトを構築、臨場感のあるバトルを目指しました。  
+共同製作では主にカメラの制御、弾の制御、接近攻撃の制御を担当しました。  
+カメラは常にプレイヤーの背後に回り込むようにCameraController.csを構築しました。  
+弾と接近攻撃はプレイヤーの位置や向きによって見た目に差異がないようにShooter.csとSwordAttack.csを構築しました。
   
-### 3つのアクション  
-ボスには距離に応じた3つのアクションを持たせ、遠距離ではランダムに2種、近距離では1種の行動をつくりました。
-* タックル（遠距離）  
-* ショット（遠距離）  
-* バリア展開（近距離）  
-それぞれアクションにあわせたコルーチンを構築し、繰り返し（UpDate）の中でプレイヤーの距離に応じたコルーチンを選択してきます。  
+### カメラの制御  
+カメラはプレイヤーを少し離れた位置から見下ろすようにカメラの中心にとらえ続け、プレイヤーの向いた方向に合わせてカメラの方向も変化します。  
+そのために考えたことは以下の2つです。  
+- プレイヤーとの距離を常に観測してカメラの位置を変更する
+- プレイヤーの角度とカメラの角度を同期させる
   
 ```C#
-void Update()
-    {
-        //ゲーム状態がプレイ中でなければ何もしない
-        if (GameManager.gameState != GameState.playing) return;
-        if (bossHP <= 0) return;
-        if (player == null) return;
+private void LateUpdate()
+{
+  if (GameManager.gameState != GameState.playing) return;
+  if (player == null) return;
 
-        // ダメージ中の点滅処理
-        if (isDamage)
-        {
-            Blinking();
-        }
+  //マウスの動きを取得
+  float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
+  float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
 
-        if (isAttacking) return; // 攻撃中は処理をスキップ
+  //プレイヤーの左右回転
+  player.transform.Rotate(new Vector3(0, mouseX, 0));
 
+  //縦方向(マイナスにして動かしやすく)
+  verticalRotation = Mathf.Clamp(verticalRotation - mouseY, minVerticalAngle, maxVerticalAngle);
 
-        timer += Time.deltaTime; //ゲームの経過時間
+  //プレイヤーの現在の位置と回転に基づいて、
+  //カメラの目標位置を計算する
+  //プレイヤーの回転を考慮したオフセット位置
+  Vector3 targetCameraPosition = player.transform.position - player.transform.rotation * diff;
 
-        //プレイヤーとの距離を測る
-        float distanceToPlayer = Vector3.Distance(transform.position, player.transform.position);
+  //カメラの位置を決定
+  transform.position = Vector3.Lerp(transform.position, targetCameraPosition, followSpeed * Time.deltaTime);
 
-        // 攻撃のクールダウン
-        if (timer >= attackInterval)
-        {
-            isAttacking = true; //攻撃中フラグをON
-            if (distanceToPlayer <= closeRange)　// Playerが近い時
-            {
-                // バリアを展開
-                StartCoroutine(ActivateBarrier());
-            }
-            else　// Playerが遠い時 (detectionRange内)
-            {
-                // タックルか球を飛ばすかをランダムで決定
-                int randomAction = Random.Range(0, 2); // 0: タックル, 1: 球を飛ばす
-
-                if (randomAction == 0)
-                {
-                    StartCoroutine(Tackle());　//タックル
-                }
-                else
-                {
-                    StartCoroutine(ShootProjectile()); //シュート
-                }
-            }
-            timer = 0; //リセット
-        }
-    }
+  //カメラの角度
+  Quaternion targetRotation =
+  Quaternion.Euler(0, player.transform.eulerAngles.y, 0) *
+  Quaternion.Euler(verticalRotation, 0, 0);
+  //カメラの角度を決定
+  transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, followSpeed * Time.deltaTime);
+  }
+}
 ```
   
-### 倒したときの爽快感
-アクションゲームとして緊張感のあるバトルの末に撃破した爽快感、達成感が大切だと思います。  
-担当したボスは撃破時に爆発エフェクトがおきるので、倒したという実感をしっかりを感じることができます。  
-また、倒してからエンディングまでにプレイヤーに達成感と余韻を残すことで、もう一度プレイしてみたくなるような手応えを目指しました。  
-  
-![爆発](readme_img/robo_readme_8.png)  
+### 弾の制御
+弾のプレハブをそのまま生成するだけでは撃つ方向に関係なく弾の向きが変わらないという問題がありました。  
+その解決のため、生成される際の角度を発射口の向きに合わせて発射されるように工夫をしました。  
+また、発射する際の力の成分が水平方向だけだと画面中央に飛ばなかったためY軸方向にも少しだけ力を加える工夫もしました。  
 
 ```C#
- //HPがなくなったら削除
-if (bossHP <= 0)
+//ショットメソッド
+void Shot()
 {
-    //爆発音を鳴らす
-    audioSource.PlayOneShot(se_Explosion);
+  //残弾数が0なら何もしない
+  if (GameManager.shotRemainingNum <= 0)
+  {
+  return;
+  }
 
-    //爆発エフェクトの生成
-    GameObject obj = Instantiate(
-        explosionPrefab,
-        transform.position,
-        Quaternion.identity
-        );
+  GameManager.shotRemainingNum--;
+  isAttack = true;
+  //ショット音を鳴らす
+  audioSource.PlayOneShot(se_shot);
 
-    obj.transform.SetParent(transform); //爆発がボスについていくように
-    Destroy(gameObject, 1.0f); //エフェクト分1秒まってからボスの消失
+  //弾を生成
+  GameObject obj = Instantiate(
+  bulletPrefab,
+  gate.transform.position,
+  gate.transform.rotation * Quaternion.Euler(90, 0, 0)
+  );
 
-    //消滅からゲームステータスが変わるまでの時間差コルーチン
-    StartCoroutine(BossDestroy());
-}
+  //カメラの方向に弾を飛ばす
+  Vector3 v = Camera.main.transform.forward;
+  //照準どおりに飛ぶように調整
+  v.y += 0.2f;
 
-//撃破からエンディングにいくまでの時間差（余韻）
-IEnumerator BossDestroy()
-{
-    yield return new WaitForSeconds(5.0f); //5秒待つ
-    GameManager.gameState = GameState.gameclear; //ゲームステータスを変更してエンディングへ
+  obj.GetComponent<Rigidbody>().AddForce(v * shootPower, ForceMode.Impulse);
+  //リロードを開始
+  StartCoroutine(ShotRecoverCoroutine());
+  //連射できないように0.2秒後に攻撃フラグをOFF
+  Invoke("CanShot", 0.2f);
 }
 ```
+
+### 接近攻撃（ブレード）の制御
+接近攻撃もプレイヤーの向きに合わせて角度が変化するのは弾と同じです。  
+ただし、そのまま実装してしまうとブレードのエフェクトをその場に置いたままプレイヤーが移動してしまう問題がありました。  
+その解決のために、ブレードのエフェクトをブレードの子オブジェクトにすることにより一緒に移動するようにしました。  
+
+```c#
+//攻撃メソッド
+void Attack()
+{
+  //攻撃フラグを立てて硬直時間の計測を開始
+  isAttack = true;
+  StartCoroutine(SwordAttackCoroutine());
+
+  //アタック音を鳴らす
+  audioSource.PlayOneShot(se_sword);
+
+  //当たり判定出現
+  swordCollider.SetActive(true);
+  //エフェクトを生成
+  GameObject obj = Instantiate(
+  swordPrefab,
+  swordCollider.transform.position,
+  swordCollider.transform.rotation
+  );
+  //エフェクトをブレードの子オブジェクトにして位置を同期させる
+  obj.transform.SetParent(swordCollider.transform);
+}
+```
+
 ## 共同開発におけるレビューを行いブラッシュアップ
 まずは最初の2日間でプロトタイプを完成させるために担当箇所を構築しました。  
 それぞれの担当箇所をGitHubを活用してマージし、当日デバッグに回れるメンバーでデバッグプレイしてプロトタイプへの評価を行いました。  
@@ -175,22 +193,37 @@ SourceTreeでブランチを分けてコンクリフト衝突がおこらない�
 ## 共同開発に関する工夫
 ### 仕様から反れていないかの確認作業
 チームの打ち合わせで大体の方向性・仕様はあったものの、細かい部分は自身の考えに委ねられる環境でした。  
-私の場合はとにかくユーザーが爽快に何回でもバトルしてみたくなる手応えを大事にしましたので、SEによる臨場感やシーン切り替えのタイミングなどを気にしました。  
-一方でこだわった結果、チームとして想定された仕様や方向性から逸脱していないかも心配な部分でしたので、疑問に思った部分はチームリーダーにマメに確認をとり、マージする際の影響なども考えながら慎重に改良を重ねることができました。  
+私の場合はとにかくユーザーがどう操作してもバグが起きないことを気にしました。  
+一方でこだわった結果、時間をかけすぎてしまったり、他の担当部分に影響が出ないかが心配な部分でしたので、疑問に思った部分はチームリーダーにマメに確認をとり、マージする際の影響なども考えながら慎重に改良を重ねることができました。  
   
-例えば、当時の心配ごととして、気軽に斬撃で勝てないよう近づきすぎるとボス本体からダメージ判定をもらうのを是としていたのですが、これが仕様上問題ないかはきちんと確認をいれました。  
+例えば、カメラの移動方法がこの方法で問題ないかをきちんと確認をいれました。チームリーダーからヒントをいただき結果として以下のように変更しました。  
+変更前  
+```c#
+//プレイヤーの位置からdiffだけ離れた位置にカメラを移動
+Vector3 targetCameraPosition = new Vector3(
+  player.transform.position.x - Mathf.Sin(playerRotationY) * diff,
+  player.transform.position.y * diff,
+  player.transform.position.z - Mathf.Cos(playerRotationY) * diff
+  );
+```
+
+変更後  
+```c#
+//プレイヤーの現在の位置と回転に基づいて、
+//カメラの目標位置を計算する
+//プレイヤーの回転を考慮したオフセット位置
+Vector3 targetCameraPosition = player.transform.position - player.transform.rotation * diff;
+```
   
 ### 細かいコミット作業
 とにかく自分のデータにトラブルがあると、全体に影響が出てしまうので何か大きな変更を行う際にはコミットによるバージョン管理によって、いつでももとに戻れるように気を使いました。  
 またコミットだけではなくプッシュを意識してクラウドにバックアップが常にある状態の維持に努めました。  
   
-特にボスがタックルしてくるコルーチン制作には調整に大変苦労しましたので、コードにコメントを多く残すと同時に確実にコミットとプッシュしていくよう意識しました。
-  
 ### 納期の意識
 チーム開発ということで自分のせいで周りに影響がでないよう良い意味でプレッシャーを感じていたのですが、それ以上にこれをプレイするユーザーを意識して時間内に必ず間に合わせるという意識を大切にしました。そのために何日に何ができていないといけないという逆算に加え、さらに半日～1日余裕をもたせるようにスケジューリングしました。  
 詰まってしまったところは、自分でこだわる部分とそうでない部分を「納期に間に合うか」で天秤にかけることで、リーダーに助力を乞うタイミングは基準を決めやすかったです。  
   
-具体的にはボスのバリア展開について細部がどうしても腑に落ちず、自分でも追及したい気持ちが高かったのですが中間のプロトタイプまで時間が迫っていたので、逆に早めにリーダーに確認をすることとし、その代わり解説してもらった原理は徹底的に理解するように努めました。  
+具体的には上方向に弾を発射しても弾の向きが水平のままになっていますが、チームリーダーに相談し納期を優先させることにして今回はそこはこだわりすぎないようにしました。
   
 ### AIの活用
 自分で考えれる部分は多かったのですが、一部時短もかねてAIを大いに活用しました。  
