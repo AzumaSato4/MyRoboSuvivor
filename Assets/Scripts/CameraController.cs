@@ -3,14 +3,12 @@ using UnityEngine;
 public class CameraController : MonoBehaviour
 {
     GameObject player; //プレイヤー
-    //float diff; //プレイヤーとの距離
     Vector3 diff; //プレイヤーとの距離
 
     [SerializeField] float followSpeed = 8f; //カメラの補間スピード
 
     //カメラの初期位置（プレイヤー位置のY + 2.5, Z -2.0当たりにするとおおむねUI照準通りに弾が飛ぶ）
     [SerializeField] Vector3 defaultPos = new Vector3(0, 3.5f, -2);
-    //[SerializeField] Vector3 defaultRotate = new Vector3(15, 0, 0);
     [SerializeField] Vector3 defaultRotate = new Vector3(20, 0, 0);
 
     [SerializeField] float mouseSensitivity = 3.0f; //マウス感度
@@ -34,7 +32,6 @@ public class CameraController : MonoBehaviour
 
         //プレイヤーとカメラとの距離を記録
         player = GameObject.FindGameObjectWithTag("Player");
-        //diff = Vector3.Distance(player.transform.position, transform.position);
         diff = player.transform.position - transform.position;
     }
 
@@ -52,15 +49,6 @@ public class CameraController : MonoBehaviour
 
         //縦方向(マイナスにして動かしやすく)
         verticalRotation = Mathf.Clamp(verticalRotation - mouseY, minVerticalAngle, maxVerticalAngle);
-
-        //角度をラジアンに変換
-        //float playerRotationY = player.transform.eulerAngles.y * Mathf.Deg2Rad;
-        //プレイヤーの位置からdiffだけ離れた位置にカメラを移動
-        //Vector3 targetCameraPosition = new Vector3(
-        //    player.transform.position.x - Mathf.Sin(playerRotationY) * diff,
-        //    defaultPos.y,
-        //    player.transform.position.z - Mathf.Cos(playerRotationY) * diff
-        //    );
 
         // プレイヤーの現在の位置と回転に基づいて、
         // カメラの目標位置を計算する
