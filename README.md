@@ -22,8 +22,7 @@ RovoSurvivorは4名チームで共同製作したUnityゲームです。
 * そのほかの使用ツール：GitHub、SorceTree、VisualStudio、Googleドライブ(スプレッドシート)で情報共有
 
 ## サンプルゲーム
-ゲームの容量が大きいためプレイできる環境を構築中  
-[RoboSurvivorサンプル](http://)
+[RoboSurvivorサンプル](https://dynarise2001.xyz/kunren/sample/robosurvivor_alpha/)
 
 ## ゲームフロー
 * タイトル  
