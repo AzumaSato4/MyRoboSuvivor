@@ -199,6 +199,8 @@ SourceTreeでブランチを分けてコンクリフト衝突がおこらない�
 例えば、カメラの移動方法がこの方法で問題ないかをきちんと確認をいれました。チームリーダーからヒントをいただき結果として以下のように変更しました。  
 変更前  
 ```c#
+float diff; //プレイヤーとカメラの距離
+
 //角度をラジアンに変換
 float playerRotationY = player.transform.eulerAngles.y * Mathf.Deg2Rad;
 //プレイヤーの位置からdiffだけ離れた位置にカメラを移動
@@ -211,6 +213,8 @@ Vector3 targetCameraPosition = new Vector3(
 
 変更後  
 ```c#
+Vector3 diff; //型を変更し扱いやすくした
+
 //プレイヤーの現在の位置と回転に基づいて、
 //カメラの目標位置を計算する
 //プレイヤーの回転を考慮したオフセット位置
